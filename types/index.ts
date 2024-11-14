@@ -8,6 +8,9 @@ export interface Event {
 export interface PowerData {
   date: string
   power: number
+  expectedPower: number
+  upperLimit: number
+  lowerLimit: number
 }
 
 // 風機類型
@@ -82,6 +85,9 @@ export interface PowerHistoryRecord {
   id: number
   turbine_id: string
   power: number
+  expected_power: number
+  upper_limit: number
+  lower_limit: number
   recorded_at: string
   created_at: string
 }

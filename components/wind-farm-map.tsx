@@ -655,7 +655,7 @@ function WindFarmMap() {
           deleteSubstation={deleteSubstation}
           deleteConnection={deleteConnection}
         />
-        <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${selectedItem ? 'ml-96' : 'ml-0'}`}>
+        <div className="flex-1 flex flex-col">
           <div className="grid grid-cols-9 gap-4 m-4">
             <Card className="col-span-1">
               <CardContent className="p-4">
