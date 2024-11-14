@@ -86,8 +86,12 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
     async click(e) {
       setSelectedItem(null)
       if (isAddingTurbine) {
+        const turbineId = `HL30-NEW${Date.now()}`
+        const turbineName = `風機 #${turbineId.slice(-4)}` // 使用 ID 的最後 4 位數作為名稱
+
         const newTurbine: WindTurbine = {
-          id: `HL30-NEW${Date.now()}`,
+          id: turbineId,
+          name: turbineName, // 加入 name 屬性
           position: [e.latlng.lat, e.latlng.lng],
           power: 5 + Math.random() * 3,
           windSpeed: 5 + Math.random() * 10,
@@ -98,7 +102,28 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
         }
         
         try {
-          // 先生成並儲存歷史數據
+          // 先將風機插入到 wind_turbines 表中
+          const { error: turbineError } = await supabase
+            .from('wind_turbines')
+            .insert({
+              id: newTurbine.id,
+              name: turbineName, // 加入自動生成的名稱
+              location: `(${newTurbine.position[1]},${newTurbine.position[0]})`,
+              power: newTurbine.power,
+              wind_speed: newTurbine.windSpeed,
+              temperature: newTurbine.temperature,
+              humidity: newTurbine.humidity,
+              status: newTurbine.status,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (turbineError) {
+            console.error('Error inserting turbine:', turbineError);
+            return;
+          }
+
+          // 然後生成並儲存歷史數據
           const now = new Date();
           const historyData = [];
 
@@ -117,24 +142,28 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
             });
           }
 
-          const { error } = await supabase
+          const { error: historyError } = await supabase
             .from('power_history')
             .insert(historyData);
 
-          if (error) {
-            console.error('Error saving power history:', error);
+          if (historyError) {
+            console.error('Error saving power history:', historyError);
             return;
           }
 
-          // 成功儲存歷史數據後，更新本地狀態
+          // 成功儲存後，更新本地狀態
           setTurbines((prev) => [...prev, newTurbine]);
           
         } catch (error) {
           console.error('Error in creating new turbine:', error);
         }
       } else if (isAddingSubstation) {
+        const substationId = `HL30-SUB${Date.now()}`
+        const substationName = `變電站 #${substationId.slice(-4)}`
+        
         const newSubstation: Substation = {
-          id: `HL30-SUB${Date.now()}`,
+          id: substationId,
+          name: substationName, // 加入 name 屬性
           position: [e.latlng.lat, e.latlng.lng],
           capacity: 100 + Math.random() * 100,
           load: Math.random() * 100,
@@ -291,6 +320,7 @@ function WindFarmMap() {
   function convertToWindTurbine(record: WindTurbineRecord): WindTurbine {
     return {
       id: record.id,
+      name: record.name,
       position: parsePointString(record.location),
       power: record.power,
       windSpeed: record.wind_speed,
@@ -304,6 +334,7 @@ function WindFarmMap() {
   function convertToSubstation(record: SubstationRecord): Substation {
     return {
       id: record.id,
+      name: record.name,
       position: parsePointString(record.location),
       capacity: record.capacity,
       load: record.load
@@ -495,6 +526,122 @@ function WindFarmMap() {
     )
   }
 
+  // 新增刪除風機的函數
+  const deleteTurbine = async (id: string) => {
+    setIsLoading(true);
+    try {
+      // 先刪除相關的連接線
+      const relatedConnections = connections.filter(
+        conn => conn.from === id || conn.to === id
+      );
+      
+      for (const conn of relatedConnections) {
+        await supabase
+          .from('connections')
+          .delete()
+          .eq('id', conn.id);
+      }
+
+      // 刪除歷史數據
+      await supabase
+        .from('power_history')
+        .delete()
+        .eq('turbine_id', id);
+
+      // 刪除風機
+      const { error } = await supabase
+        .from('wind_turbines')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting turbine:', error);
+        return;
+      }
+
+      // 更新本地狀態
+      setTurbines(prev => prev.filter(t => t.id !== id));
+      setConnections(prev => prev.filter(c => c.from !== id && c.to !== id));
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error in deleting turbine:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 新增刪除變電站的函數
+  const deleteSubstation = async (id: string) => {
+    setIsLoading(true);
+    try {
+      // 先刪除相關的連接線
+      const relatedConnections = connections.filter(
+        conn => conn.from === id || conn.to === id
+      );
+      
+      for (const conn of relatedConnections) {
+        await supabase
+          .from('connections')
+          .delete()
+          .eq('id', conn.id);
+      }
+
+      // 刪除變電站
+      const { error } = await supabase
+        .from('substations')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting substation:', error);
+        return;
+      }
+
+      // 更新本地狀態
+      setSubstations(prev => prev.filter(s => s.id !== id));
+      setConnections(prev => prev.filter(c => c.from !== id && c.to !== id));
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error in deleting substation:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 新增刪除連接線的函數
+  const deleteConnection = async (id: number) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('connections')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting connection:', error);
+        return;
+      }
+
+      // 更新本地狀態
+      setConnections(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error in deleting connection:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 新增計算風機狀態數量的函數
+  const getTurbineStatusCounts = () => {
+    return turbines.reduce(
+      (acc, turbine) => {
+        acc[turbine.status]++;
+        return acc;
+      },
+      { normal: 0, warning: 0, error: 0 }
+    );
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <TitleBar username="系統管理員" />
@@ -503,64 +650,113 @@ function WindFarmMap() {
         <SidePanel 
           selectedItem={selectedItem} 
           setSelectedItem={setSelectedItem}
-          updateTurbineStatus={updateTurbineStatus} 
+          updateTurbineStatus={updateTurbineStatus}
+          deleteTurbine={deleteTurbine}
+          deleteSubstation={deleteSubstation}
+          deleteConnection={deleteConnection}
         />
         <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${selectedItem ? 'ml-96' : 'ml-0'}`}>
-          <Card className="m-4">
-            <CardHeader>
-              
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center">
-                  <Wind className="w-6 h-6 mr-2 text-blue-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">總風機數量</p>
-                    <p className="text-lg font-bold">{turbines.length}</p>
-                  </div>
+          <div className="grid grid-cols-9 gap-4 m-4">
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Wind className="w-6 h-6 text-blue-500 mb-2" />
+                  <p className="text-sm text-gray-500">總風機數量</p>
+                  <p className="text-lg font-bold">{turbines.length}</p>
                 </div>
-                <div className="flex items-center">
-                  <Zap className="w-6 h-6 mr-2 text-green-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">總發電量</p>
-                    <p className="text-lg font-bold">{totalPower.toFixed(2)} MW</p>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-green-500 mb-2 flex items-center justify-center text-white">
+                    <Wind className="w-4 h-4" />
                   </div>
+                  <p className="text-sm text-gray-500">正常運轉</p>
+                  <p className="text-lg font-bold text-green-600">{getTurbineStatusCounts().normal}</p>
                 </div>
-                <div className="flex items-center">
-                  <Wind className="w-6 h-6 mr-2 text-cyan-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">平均風速</p>
-                    <p className="text-lg font-bold">{averageWindSpeed.toFixed(1)} m/s</p>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 mb-2 flex items-center justify-center text-white">
+                    <Wind className="w-4 h-4" />
                   </div>
+                  <p className="text-sm text-gray-500">待修風機</p>
+                  <p className="text-lg font-bold text-blue-600">{getTurbineStatusCounts().warning}</p>
                 </div>
-                <div className="flex items-center">
-                  <Thermometer className="w-6 h-6 mr-2 text-red-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">平均溫度</p>
-                    <p className="text-lg font-bold">{averageTemperature.toFixed(1)} °C</p>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-6 h-6 rounded-full bg-red-500 mb-2 flex items-center justify-center text-white">
+                    <Wind className="w-4 h-4" />
                   </div>
+                  <p className="text-sm text-gray-500">故障停機</p>
+                  <p className="text-lg font-bold text-red-600">{getTurbineStatusCounts().error}</p>
                 </div>
-                <div className="flex items-center">
-                  <Droplets className="w-6 h-6 mr-2 text-blue-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">平均濕度</p>
-                    <p className="text-lg font-bold">{averageHumidity.toFixed(1)} %</p>
-                  </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Zap className="w-6 h-6 text-green-500 mb-2" />
+                  <p className="text-sm text-gray-500">總發電量</p>
+                  <p className="text-lg font-bold">{totalPower.toFixed(1)}<span className="text-sm">MW</span></p>
                 </div>
-                <div className="flex items-center">
-                  <Battery className="w-6 h-6 mr-2 text-yellow-500" />
-                  <div>
-                    <p className="text-sm text-gray-500">變電站數量</p>
-                    <p className="text-lg font-bold">{substations.length}</p>
-                  </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Wind className="w-6 h-6 text-cyan-500 mb-2" />
+                  <p className="text-sm text-gray-500">平均風速</p>
+                  <p className="text-lg font-bold">{averageWindSpeed.toFixed(1)}<span className="text-sm">m/s</span></p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Thermometer className="w-6 h-6 text-red-500 mb-2" />
+                  <p className="text-sm text-gray-500">平均溫度</p>
+                  <p className="text-lg font-bold">{averageTemperature.toFixed(1)}<span className="text-sm">°C</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Droplets className="w-6 h-6 text-blue-500 mb-2" />
+                  <p className="text-sm text-gray-500">平均濕度</p>
+                  <p className="text-lg font-bold">{averageHumidity.toFixed(1)}<span className="text-sm">%</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-1">
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center">
+                  <Battery className="w-6 h-6 text-yellow-500 mb-2" />
+                  <p className="text-sm text-gray-500">變電站數量</p>
+                  <p className="text-lg font-bold">{substations.length}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           <div className="flex-grow m-4 rounded-lg overflow-hidden mb-14">
             <MapContainer
-              center={[24.0056628, 119.8879360] as LatLngTuple}
-              zoom={11}
+              center={[24.0056628, 119.9879360] as LatLngTuple}
+              zoom={12}
               style={{ height: 'calc(100% - 1rem)', width: '100%' }}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -589,84 +785,93 @@ function WindFarmMap() {
               <ConnectionLines />
             </MapContainer>
           </div>
-          <div className={`fixed bottom-0 left-0 right-0 bg-white shadow-lg transform transition-all duration-300 ease-in-out z-[1002]`}>
-            {/* 控制列標題 */}
-            <div 
-              className="h-10 flex items-center justify-between px-4 cursor-pointer hover:bg-gray-50"
-              onClick={() => setIsControlsOpen(!isControlsOpen)}
-            >
-              <div className="flex items-center space-x-2">
-                <span className="font-medium text-gray-700">畫面編輯</span>
-                <span className="text-sm text-gray-500">
-                  {isControlsOpen ? '點擊收合' : '點擊展開'}
-                </span>
-              </div>
-              <div className={`transform transition-transform duration-300 ${isControlsOpen ? 'rotate-180' : ''}`}>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5 text-gray-500"
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M5 15l7-7 7 7" 
-                  />
-                </svg>
-              </div>
-            </div>
+          <div className="fixed bottom-6 right-6 z-[1002]">
+            <div className="relative">
+              <button
+                onClick={() => setIsControlsOpen(!isControlsOpen)}
+                className={`w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-blue-600 ${
+                  isControlsOpen ? 'rotate-45' : ''
+                }`}
+              >
+                <Plus className="w-6 h-6" />
+              </button>
 
-            {/* 按鈕區域 - 使用條件渲染 */}
-            {isControlsOpen && (
-              <div className="p-4 bg-white border-t">
-                <div className="flex gap-4">
-                  <Button
+              {isControlsOpen && (
+                <div className="absolute bottom-full right-1 mb-3 space-y-3">
+                  <button
                     onClick={() => {
-                      setIsAddingTurbine(!isAddingTurbine)
-                      setIsAddingSubstation(false)
+                      setIsAddingTurbine(!isAddingTurbine);
+                      setIsAddingSubstation(false);
+                      setIsConnecting(false);
                     }}
-                    className={`${isAddingTurbine ? 'bg-green-500 hover:bg-green-600' : ''} transition-colors`}
+                    className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+                      isAddingTurbine 
+                        ? 'bg-green-500 hover:bg-green-600 text-white' 
+                        : 'bg-white hover:bg-gray-100 text-green-500'
+                    }`}
+                    title={isAddingTurbine ? '取消新增' : '新增風機'}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {isAddingTurbine ? '取消新增' : '新增風機'}
-                  </Button>
-                  <Button
+                    <Wind className="w-5 h-5" />
+                  </button>
+
+                  <button
                     onClick={() => {
-                      setIsAddingSubstation(!isAddingSubstation)
-                      setIsAddingTurbine(false)
+                      setIsAddingSubstation(!isAddingSubstation);
+                      setIsAddingTurbine(false);
+                      setIsConnecting(false);
                     }}
-                    className={`${isAddingSubstation ? 'bg-yellow-500 hover:bg-yellow-600' : ''} transition-colors`}
+                    className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+                      isAddingSubstation 
+                        ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+                        : 'bg-white hover:bg-gray-100 text-yellow-500'
+                    }`}
+                    title={isAddingSubstation ? '取消新增' : '新增變電站'}
                   >
-                    <Battery className="w-4 h-4 mr-2" />
-                    {isAddingSubstation ? '取消新增' : '新增變電站'}
-                  </Button>
-                  <Button
+                    <Battery className="w-5 h-5" />
+                  </button>
+
+                  <button
                     onClick={() => {
-                      setIsConnecting(!isConnecting)
-                      setConnectingFrom(null)
+                      setIsConnecting(!isConnecting);
+                      setConnectingFrom(null);
                     }}
-                    className={`${isConnecting ? 'bg-blue-500 hover:bg-blue-600' : ''} transition-colors`}
+                    className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+                      isConnecting 
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                        : 'bg-white hover:bg-gray-100 text-blue-500'
+                    }`}
+                    title={isConnecting ? '取消連接' : '新增連接線'}
                   >
-                    {isConnecting ? '取消連接' : '新增連接線'}
-                  </Button>
-                  <Button 
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M13 10V3L4 14h7v7l9-11h-7z" 
+                      />
+                    </svg>
+                  </button>
+
+                  <button
                     onClick={() => {
-                      setTurbines([])
-                      setSubstations([])
-                      setConnections([])
-                    }} 
-                    variant="destructive"
-                    className="transition-colors"
+                      setTurbines([]);
+                      setSubstations([]);
+                      setConnections([]);
+                    }}
+                    className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 shadow-lg flex items-center justify-center transition-all duration-300 text-red-500"
+                    title="重置所有"
                   >
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    重置所有
-                  </Button>
+                    <AlertTriangle className="w-5 h-5" />
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

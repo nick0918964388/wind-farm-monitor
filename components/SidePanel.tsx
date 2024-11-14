@@ -1,14 +1,24 @@
 import { Button } from "@/components/ui/button"
-import { Wind, Battery, Zap, Thermometer, Droplets, X } from 'lucide-react'
+import { Wind, Battery, Zap, Thermometer, Droplets, X, Trash2, Pencil } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { PowerHistoryRecord, SidePanelProps, WindTurbine, PowerData, TurbineEvent } from '@/types'
 
-const SidePanel = ({ selectedItem, setSelectedItem, updateTurbineStatus }: SidePanelProps) => {
+const SidePanel = ({ 
+  selectedItem, 
+  setSelectedItem, 
+  updateTurbineStatus,
+  deleteTurbine,
+  deleteSubstation,
+  deleteConnection 
+}: SidePanelProps) => {
   const [powerHistory, setPowerHistory] = useState<PowerData[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 從 Supabase 讀取發電歷史數據
   const fetchPowerHistory = async (turbineId: string) => {
@@ -81,6 +91,63 @@ const SidePanel = ({ selectedItem, setSelectedItem, updateTurbineStatus }: SideP
     }
   };
 
+  // 當選中項目改變時，重置編輯狀態
+  useEffect(() => {
+    setIsEditing(false);
+    setEditedName('');
+  }, [selectedItem?.id]);
+
+  // 更新名稱的函數
+  const updateItemName = async () => {
+    if (!selectedItem || !editedName.trim()) return;
+
+    try {
+      if ('windSpeed' in selectedItem) {
+        // 更新風機名稱
+        const { error } = await supabase
+          .from('wind_turbines')
+          .update({ 
+            name: editedName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedItem.id);
+
+        if (error) throw error;
+        
+        // 更新本地狀態
+        selectedItem.name = editedName;
+      } else {
+        // 更新變電站名稱
+        const { error } = await supabase
+          .from('substations')
+          .update({ 
+            name: editedName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedItem.id);
+
+        if (error) throw error;
+        
+        // 更新本地狀態
+        selectedItem.name = editedName;
+      }
+
+      // 更新成功後關閉編輯模式
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating name:', error);
+    }
+  };
+
+  // 處理按鍵事件
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      updateItemName();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
   if (!selectedItem) return null
 
   const renderPowerChart = (turbine: WindTurbine) => {
@@ -144,13 +211,52 @@ const SidePanel = ({ selectedItem, setSelectedItem, updateTurbineStatus }: SideP
             ) : (
               <Battery className="h-5 w-5 text-yellow-500" />
             )}
-            <h2 className="text-xl font-bold">
-              {'windSpeed' in selectedItem ? `風機 #${selectedItem.id}` : `變電站 #${selectedItem.id}`}
-            </h2>
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={updateItemName}
+                className="text-xl font-bold bg-white border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center space-x-2">
+                <h2 className="text-xl font-bold">
+                  {selectedItem.name}
+                </h2>
+                <button
+                  onClick={() => {
+                    setIsEditing(true);
+                    setEditedName(selectedItem.name);
+                  }}
+                  className="p-1 hover:bg-gray-200 rounded-full"
+                >
+                  <Pencil className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
+            )}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setSelectedItem(null)}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="destructive" 
+              size="icon"
+              onClick={() => {
+                if ('windSpeed' in selectedItem) {
+                  deleteTurbine(selectedItem.id);
+                } else {
+                  deleteSubstation(selectedItem.id);
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setSelectedItem(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* 內容區域 */}

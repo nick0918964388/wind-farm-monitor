@@ -13,6 +13,7 @@ export interface PowerData {
 // 風機類型
 export interface WindTurbine {
   id: string
+  name: string
   position: [number, number]
   status: 'normal' | 'warning' | 'error'
   power: number
@@ -26,6 +27,7 @@ export interface WindTurbine {
 // 變電站類型
 export interface Substation {
   id: string
+  name: string
   position: [number, number]
   capacity: number
   load: number
@@ -89,6 +91,9 @@ export interface SidePanelProps {
   selectedItem: WindTurbine | Substation | null
   setSelectedItem: (item: WindTurbine | Substation | null) => void
   updateTurbineStatus: (id: string, status: 'normal' | 'warning' | 'error') => void
+  deleteTurbine: (id: string) => Promise<void>
+  deleteSubstation: (id: string) => Promise<void>
+  deleteConnection: (id: number) => Promise<void>
 }
 
 export interface DraggableMarkerProps {
