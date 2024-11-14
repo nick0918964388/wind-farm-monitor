@@ -75,8 +75,14 @@ function parsePointString(pointStr: string): [number, number] {
 }
 
 // 將 MapEvents 改為異步函數
-function MapEvents() {
-  const mapEvents = useMapEvents({
+function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTurbines, setSubstations }: {
+  setSelectedItem: (item: WindTurbine | Substation | null) => void,
+  isAddingTurbine: boolean,
+  isAddingSubstation: boolean,
+  setTurbines: React.Dispatch<React.SetStateAction<WindTurbine[]>>,
+  setSubstations: React.Dispatch<React.SetStateAction<Substation[]>>
+}) {
+  useMapEvents({
     async click(e) {
       setSelectedItem(null)
       if (isAddingTurbine) {
@@ -495,8 +501,8 @@ function WindFarmMap() {
       <div className="flex flex-1 pt-14">
         {isLoading && <LoadingSpinner />}
         <SidePanel 
-          selectedItem={selectedItem as any} // 暫時使用 any 來解決類型問題
-          setSelectedItem={setSelectedItem as any}
+          selectedItem={selectedItem} 
+          setSelectedItem={setSelectedItem}
           updateTurbineStatus={updateTurbineStatus} 
         />
         <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${selectedItem ? 'ml-96' : 'ml-0'}`}>
@@ -558,7 +564,13 @@ function WindFarmMap() {
               style={{ height: 'calc(100% - 1rem)', width: '100%' }}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <MapEvents />
+              <MapEvents 
+                setSelectedItem={setSelectedItem}
+                isAddingTurbine={isAddingTurbine}
+                isAddingSubstation={isAddingSubstation}
+                setTurbines={setTurbines}
+                setSubstations={setSubstations}
+              />
               {turbines.map((turbine) => (
                 <DraggableMarker
                   key={turbine.id}
