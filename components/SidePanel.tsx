@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { PowerHistoryRecord, SidePanelProps, WindTurbine, PowerData } from '@/types'
+import type { PowerHistoryRecord, SidePanelProps, WindTurbine, PowerData, TurbineEvent } from '@/types'
 
 const SidePanel = ({ selectedItem, setSelectedItem, updateTurbineStatus }: SidePanelProps) => {
   const [powerHistory, setPowerHistory] = useState<PowerData[]>([]);
@@ -267,7 +267,7 @@ const SidePanel = ({ selectedItem, setSelectedItem, updateTurbineStatus }: SideP
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedItem.events.map((event: Event, index) => (
+                      {selectedItem.events.map((event: TurbineEvent, index) => (
                         <TableRow key={index}>
                           <TableCell className="text-sm">{event.date}</TableCell>
                           <TableCell className="text-sm">{event.event}</TableCell>

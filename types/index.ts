@@ -95,4 +95,9 @@ export interface DraggableMarkerProps {
   item: WindTurbine | Substation
   updatePosition: (id: string, pos: [number, number]) => void
   updateStatus?: (id: string, status: 'normal' | 'warning' | 'error') => void
+}
+
+export interface TurbineEvent {
+  date: string;
+  event: string;
 } 
