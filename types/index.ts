@@ -2,6 +2,7 @@
 export interface Event {
   date: string
   event: string
+  priority?: number
 }
 
 // 發電歷史數據類型
@@ -92,6 +93,23 @@ export interface PowerHistoryRecord {
   created_at: string
 }
 
+// 添加健康歷史記錄類型
+export interface HealthHistoryRecord {
+  id: number;
+  turbine_id: string;
+  health_score: number;
+  status: 'good' | 'warning' | 'critical';
+  issues: string[];
+  recorded_at: string;
+  created_at: string;
+}
+
+export interface HealthData {
+  date: string;
+  score: number;
+  status: 'good' | 'warning' | 'critical';
+}
+
 // Props 類型
 export interface SidePanelProps {
   selectedItem: WindTurbine | Substation | null
@@ -108,7 +126,8 @@ export interface DraggableMarkerProps {
   updateStatus?: (id: string, status: 'normal' | 'warning' | 'error') => void
 }
 
-export interface TurbineEvent {
+export type TurbineEvent = {
   date: string;
   event: string;
-} 
+  priority: number;
+}; 

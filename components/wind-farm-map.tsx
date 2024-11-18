@@ -22,7 +22,8 @@ import type {
 } from '@/types'
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { TitleBar } from "@/components/ui/title-bar"
-import SidePanel from './SidePanel'
+import { SidePanel } from '@/components/side-panel'
+import { calculateHealthScore } from '@/components/side-panel/utils'
 
 // 風機圖標 SVG
 const windTurbineSvg = (color: string) => `
@@ -87,18 +88,22 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
       setSelectedItem(null)
       if (isAddingTurbine) {
         const turbineId = `HL30-NEW${Date.now()}`
-        const turbineName = `Turbine #${turbineId.slice(-4)}` // 使用 ID 的最後 4 位數作為名稱
+        const turbineName = `Turbine #${turbineId.slice(-4)}`
+        const currentPower = 5 + Math.random() * 3;
 
         const newTurbine: WindTurbine = {
           id: turbineId,
-          name: turbineName, // 加入 name 屬性
+          name: turbineName,
           position: [e.latlng.lat, e.latlng.lng],
-          power: 5 + Math.random() * 3,
+          power: currentPower,
           windSpeed: 5 + Math.random() * 10,
           temperature: 15 + Math.random() * 10,
           humidity: 60 + Math.random() * 20,
           status: 'normal',
-          events: [{ date: new Date().toLocaleString(), event: 'Installation Complete' }],
+          events: [{
+            date: new Date().toLocaleString(),
+            event: 'Installation Complete'
+          }],
         }
         
         try {
@@ -107,7 +112,7 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
             .from('wind_turbines')
             .insert({
               id: newTurbine.id,
-              name: turbineName, // 加入自動生成的名稱
+              name: turbineName,
               location: `(${newTurbine.position[1]},${newTurbine.position[0]})`,
               power: newTurbine.power,
               wind_speed: newTurbine.windSpeed,
@@ -123,7 +128,7 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
             return;
           }
 
-          // 然後生成並儲存歷史數據
+          // 生成並儲存歷史數據
           const now = new Date();
           const historyData = [];
 
@@ -132,16 +137,34 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
             date.setDate(date.getDate() - i);
             
             const randomVariation = (Math.random() - 0.5) * 2;
-            const power = Math.max(0, newTurbine.power + randomVariation);
+            const power = Math.max(0, currentPower + randomVariation);
             
             historyData.push({
               turbine_id: newTurbine.id,
               power: Number(power.toFixed(2)),
+              expected_power: 8.0,        // 固定的預期發電量
+              upper_limit: 12.0,          // 固定的上限警戒值
+              lower_limit: 4.0,           // 固定的下限警戒值
               recorded_at: date.toISOString(),
               created_at: new Date().toISOString()
             });
           }
 
+          // 插入初始事件
+          const { error: eventError } = await supabase
+            .from('turbine_events')
+            .insert({
+              turbine_id: newTurbine.id,
+              event: 'Installation Complete',
+              priority: 3,
+              created_at: new Date().toISOString()
+            });
+
+          if (eventError) {
+            console.error('Error inserting event:', eventError);
+          }
+
+          // 插入發電歷史數據
           const { error: historyError } = await supabase
             .from('power_history')
             .insert(historyData);
@@ -230,7 +253,8 @@ function WindFarmMap() {
 
         // 更新本地狀態
         if (turbines) {
-          setTurbines(turbines.map(convertToWindTurbine))
+          const convertedTurbines = await Promise.all(turbines.map(convertToWindTurbine));
+          setTurbines(convertedTurbines);
         }
         
         if (substations) {
@@ -316,8 +340,23 @@ function WindFarmMap() {
     }
   }
 
-  // 轉換函數
-  function convertToWindTurbine(record: WindTurbineRecord): WindTurbine {
+  // 修改轉換函數
+  async function convertToWindTurbine(record: WindTurbineRecord): Promise<WindTurbine> {
+    // 讀取該風機的事件歷史
+    const { data: events, error } = await supabase
+      .from('turbine_events')
+      .select('*')
+      .eq('turbine_id', record.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching turbine events:', error);
+    }
+
+    // 加入除錯訊息
+    console.log('Turbine ID:', record.id);
+    console.log('Events data:', events);
+
     return {
       id: record.id,
       name: record.name,
@@ -327,7 +366,10 @@ function WindFarmMap() {
       temperature: record.temperature,
       humidity: record.humidity,
       status: record.status,
-      events: []
+      events: events ? events.map(event => ({
+        date: new Date(event.created_at).toLocaleString(),
+        event: event.event
+      })) : []
     }
   }
 
@@ -386,7 +428,9 @@ function WindFarmMap() {
         .insert({
           turbine_id: id,
           event: `Status changed to ${newStatus}`,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          priority: newStatus === 'error' ? 1 : 
+                   newStatus === 'warning' ? 2 : 3
         })
 
       if (eventError) {
