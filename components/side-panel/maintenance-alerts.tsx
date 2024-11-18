@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AlertTriangle, CheckCircle, Clock, Tool } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -55,37 +55,6 @@ export const MaintenanceAlerts = ({ turbineId, healthScore }: MaintenanceAlertsP
     }
   };
 
-  // 當健康分數低於閾值時自動創建警報
-  useEffect(() => {
-    const createHealthAlert = async () => {
-      if (healthScore < 60 && !alerts.some(a => 
-        a.alert_type === 'health_score' && 
-        a.status !== 'completed' &&
-        a.health_score === healthScore
-      )) {
-        try {
-          const { error } = await supabase
-            .from('maintenance_alerts')
-            .insert({
-              turbine_id: turbineId,
-              alert_type: 'health_score',
-              status: 'pending',
-              description: `Low health score detected: ${healthScore}`,
-              health_score: healthScore,
-              created_at: new Date().toISOString()
-            });
-
-          if (error) throw error;
-          await fetchAlerts();
-        } catch (error) {
-          console.error('Error creating health alert:', error);
-        }
-      }
-    };
-
-    createHealthAlert();
-  }, [healthScore, turbineId]);
-
   useEffect(() => {
     fetchAlerts();
   }, [turbineId]);
@@ -95,7 +64,7 @@ export const MaintenanceAlerts = ({ turbineId, healthScore }: MaintenanceAlertsP
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'in_progress':
-        return <Tool className="h-4 w-4 text-blue-500" />;
+        return <AlertTriangle className="h-4 w-4 text-blue-500" />;
       case 'completed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
     }
