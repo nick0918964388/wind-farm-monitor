@@ -32,9 +32,10 @@ export const SidePanel = ({
   const [sections, setSections] = useState({
     smartMonitoring: true,
     metrics: true,
-    powerTrend: true,
+    powerTrend: false,
     eventHistory: true,
-    statusControl: false
+    statusControl: false,
+    healthTrend: false
   });
   const [healthHistory, setHealthHistory] = useState<HealthData[]>([]);
   const [isLoadingHealthHistory, setIsLoadingHealthHistory] = useState(false);
