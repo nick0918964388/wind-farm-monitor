@@ -3,7 +3,7 @@ import { Wind, Battery, Pencil } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from "@/components/ui/button"
 import { supabase } from '@/lib/supabase'
-import type { PowerData, SidePanelProps, TurbineEvent } from '@/types'
+import type { PowerData, SidePanelProps, TurbineEvent, HealthData } from '@/types'
 import { SmartMonitoring } from './smart-monitoring'
 import { MetricsSection } from './metrics-section'
 import { PowerTrend } from './power-trend'
