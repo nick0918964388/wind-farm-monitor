@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Wind, Battery, Pencil, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from "@/components/ui/button"
@@ -22,8 +22,18 @@ import {
   AlertDialogCancel,
   AlertDialogAction
 } from '@/components/ui/alert-dialog'
+import { MaintenanceAlerts } from './maintenance-alerts'
+import { calculateHealthScore } from './utils'
+import debounce from 'lodash/debounce'
 
 type TimeRange = 'week' | 'month' | 'year';
+
+// 添加 Loading Skeleton 組件
+const ChartSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-[200px] bg-gray-200 rounded-lg"></div>
+  </div>
+);
 
 export const SidePanel = ({ 
   selectedItem, 
@@ -39,17 +49,32 @@ export const SidePanel = ({
   const [editedName, setEditedName] = useState('');
   const [events, setEvents] = useState<TurbineEvent[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+  const [powerTimeRange, setPowerTimeRange] = useState<TimeRange>('week');
+  const [healthTimeRange, setHealthTimeRange] = useState<TimeRange>('week');
   const [sections, setSections] = useState({
     smartMonitoring: true,
     metrics: true,
     powerTrend: true,
     eventHistory: true,
     statusControl: false,
-    healthTrend: true
+    healthTrend: true,
+    maintenanceAlerts: true
   });
   const [healthHistory, setHealthHistory] = useState<HealthData[]>([]);
   const [isLoadingHealthHistory, setIsLoadingHealthHistory] = useState(false);
+  const [healthScore, setHealthScore] = useState(0);
+
+  // 使用 useRef 來存儲最新的請求
+  const currentRequest = useRef<string | null>(null);
+
+  // 使用 debounce 包裝資料讀取函數
+  const debouncedFetchData = useCallback(
+    debounce((turbineId: string, timeRange: TimeRange) => {
+      fetchPowerHistory(turbineId);
+      fetchHealthHistory(turbineId);
+    }, 300),  // 300ms 延遲
+    []
+  );
 
   const toggleSection = (sectionName: keyof typeof sections) => {
     setSections(prev => ({
@@ -60,12 +85,15 @@ export const SidePanel = ({
 
   // 從 Supabase 讀取發電歷史數據
   const fetchPowerHistory = async (turbineId: string) => {
+    const requestId = Date.now().toString();
+    currentRequest.current = requestId;
+    
     setIsLoadingHistory(true);
     try {
       const endDate = new Date();
       const startDate = new Date();
       
-      switch (timeRange) {
+      switch (powerTimeRange) {
         case 'week':
           startDate.setDate(startDate.getDate() - 7);
           break;
@@ -85,9 +113,10 @@ export const SidePanel = ({
         .lte('recorded_at', endDate.toISOString())
         .order('recorded_at', { ascending: true });
 
-      if (error) throw error;
+      // 確保這是最新的請求
+      if (currentRequest.current !== requestId) return;
 
-      console.log('Raw power history data:', data);
+      if (error) throw error;
 
       if (data) {
         const formattedData = data.map(record => ({
@@ -98,14 +127,14 @@ export const SidePanel = ({
           lowerLimit: Number(record.lower_limit)
         }));
         
-        console.log('Formatted power history data:', formattedData);
-        
         setPowerHistory(formattedData);
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
-      setIsLoadingHistory(false);
+      if (currentRequest.current === requestId) {
+        setIsLoadingHistory(false);
+      }
     }
   };
 
@@ -137,7 +166,7 @@ export const SidePanel = ({
       const endDate = new Date();
       const startDate = new Date();
       
-      switch (timeRange) {
+      switch (healthTimeRange) {
         case 'week':
           startDate.setDate(startDate.getDate() - 7);
           break;
@@ -176,11 +205,13 @@ export const SidePanel = ({
 
   useEffect(() => {
     if (selectedItem && 'windSpeed' in selectedItem) {
-      fetchPowerHistory(selectedItem.id);
-      fetchTurbineEvents(selectedItem.id);
-      fetchHealthHistory(selectedItem.id);
+      debouncedFetchData(selectedItem.id, powerTimeRange);
     }
-  }, [selectedItem?.id, timeRange]);
+    
+    return () => {
+      currentRequest.current = null;  // 清理當前請求
+    };
+  }, [selectedItem?.id, powerTimeRange, healthTimeRange]);
 
   // 更新名稱的函數
   const updateItemName = async () => {
@@ -300,8 +331,15 @@ export const SidePanel = ({
                   isOpen={sections.smartMonitoring}
                   onToggle={() => toggleSection('smartMonitoring')}
                 >
-                  <SmartMonitoring turbine={selectedItem} />
+                  <SmartMonitoring 
+                    turbine={selectedItem} 
+                    onHealthScoreCalculated={(score) => {
+                      setHealthScore(score);
+                    }}
+                  />
                 </SectionTitle>
+
+                
 
                 <SectionTitle 
                   title="Metrics" 
@@ -330,8 +368,8 @@ export const SidePanel = ({
                 >
                   <PowerTrend 
                     powerHistory={powerHistory}
-                    timeRange={timeRange}
-                    onTimeRangeChange={setTimeRange}
+                    timeRange={powerTimeRange}
+                    onTimeRangeChange={setPowerTimeRange}
                     isLoading={isLoadingHistory}
                   />
                 </SectionTitle>
@@ -343,12 +381,21 @@ export const SidePanel = ({
                 >
                   <HealthTrend 
                     healthHistory={healthHistory}
-                    timeRange={timeRange}
-                    onTimeRangeChange={setTimeRange}
+                    timeRange={healthTimeRange}
+                    onTimeRangeChange={setHealthTimeRange}
                     isLoading={isLoadingHealthHistory}
                   />
                 </SectionTitle>
-
+                <SectionTitle   
+                  title="Maintenance Alerts" 
+                  isOpen={sections.maintenanceAlerts}
+                  onToggle={() => toggleSection('maintenanceAlerts')}
+                >
+                  <MaintenanceAlerts 
+                    turbineId={selectedItem.id} 
+                    healthScore={healthScore}
+                  />
+                </SectionTitle>
                 <SectionTitle 
                   title="Status Control" 
                   isOpen={sections.statusControl}

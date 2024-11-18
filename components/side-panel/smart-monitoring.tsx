@@ -7,9 +7,10 @@ import { HealthScore } from './types';
 
 interface SmartMonitoringProps {
   turbine: WindTurbine;
+  onHealthScoreCalculated?: (score: number) => void;
 }
 
-export const SmartMonitoring = ({ turbine }: SmartMonitoringProps) => {
+export const SmartMonitoring = ({ turbine, onHealthScoreCalculated }: SmartMonitoringProps) => {
   const [health, setHealth] = useState<HealthScore>({
     score: 100,
     status: 'good',
@@ -22,6 +23,9 @@ export const SmartMonitoring = ({ turbine }: SmartMonitoringProps) => {
       try {
         const result = await calculateHealthScore(turbine);
         setHealth(result);
+        if (onHealthScoreCalculated) {
+          onHealthScoreCalculated(result.score);
+        }
       } catch (error) {
         console.error('Error calculating health score:', error);
       } finally {
@@ -30,7 +34,7 @@ export const SmartMonitoring = ({ turbine }: SmartMonitoringProps) => {
     };
 
     fetchHealth();
-  }, [turbine]);
+  }, [turbine, onHealthScoreCalculated]);
 
   if (isLoading) {
     return <div>Loading...</div>;
