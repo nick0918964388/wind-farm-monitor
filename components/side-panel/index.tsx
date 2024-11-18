@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Wind, Battery, Pencil, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from "@/components/ui/button"
@@ -24,16 +24,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { MaintenanceAlerts } from './maintenance-alerts'
 import { calculateHealthScore } from './utils'
-import debounce from 'lodash/debounce'
 
 type TimeRange = 'week' | 'month' | 'year';
-
-// 添加 Loading Skeleton 組件
-const ChartSkeleton = () => (
-  <div className="animate-pulse">
-    <div className="h-[200px] bg-gray-200 rounded-lg"></div>
-  </div>
-);
 
 export const SidePanel = ({ 
   selectedItem, 
@@ -64,18 +56,6 @@ export const SidePanel = ({
   const [isLoadingHealthHistory, setIsLoadingHealthHistory] = useState(false);
   const [healthScore, setHealthScore] = useState(0);
 
-  // 使用 useRef 來存儲最新的請求
-  const currentRequest = useRef<string | null>(null);
-
-  // 使用 debounce 包裝資料讀取函數
-  const debouncedFetchData = useCallback(
-    debounce((turbineId: string, timeRange: TimeRange) => {
-      fetchPowerHistory(turbineId);
-      fetchHealthHistory(turbineId);
-    }, 300),  // 300ms 延遲
-    []
-  );
-
   const toggleSection = (sectionName: keyof typeof sections) => {
     setSections(prev => ({
       ...prev,
@@ -85,9 +65,6 @@ export const SidePanel = ({
 
   // 從 Supabase 讀取發電歷史數據
   const fetchPowerHistory = async (turbineId: string) => {
-    const requestId = Date.now().toString();
-    currentRequest.current = requestId;
-    
     setIsLoadingHistory(true);
     try {
       const endDate = new Date();
@@ -113,10 +90,9 @@ export const SidePanel = ({
         .lte('recorded_at', endDate.toISOString())
         .order('recorded_at', { ascending: true });
 
-      // 確保這是最新的請求
-      if (currentRequest.current !== requestId) return;
-
       if (error) throw error;
+
+      console.log('Raw power history data:', data);
 
       if (data) {
         const formattedData = data.map(record => ({
@@ -127,14 +103,14 @@ export const SidePanel = ({
           lowerLimit: Number(record.lower_limit)
         }));
         
+        console.log('Formatted power history data:', formattedData);
+        
         setPowerHistory(formattedData);
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
-      if (currentRequest.current === requestId) {
-        setIsLoadingHistory(false);
-      }
+      setIsLoadingHistory(false);
     }
   };
 
@@ -205,12 +181,10 @@ export const SidePanel = ({
 
   useEffect(() => {
     if (selectedItem && 'windSpeed' in selectedItem) {
-      debouncedFetchData(selectedItem.id, powerTimeRange);
+      fetchPowerHistory(selectedItem.id);
+      fetchTurbineEvents(selectedItem.id);
+      fetchHealthHistory(selectedItem.id);
     }
-    
-    return () => {
-      currentRequest.current = null;  // 清理當前請求
-    };
   }, [selectedItem?.id, powerTimeRange, healthTimeRange]);
 
   // 更新名稱的函數
