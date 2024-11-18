@@ -531,20 +531,34 @@ function WindFarmMap() {
   }
 
   function ConnectionLines() {
+    const [time, setTime] = useState(0);
+
+    // 添加動畫效果
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setTime(prev => prev + 1);
+      }, 50);  // 每 50ms 更新一次
+
+      return () => clearInterval(timer);
+    }, []);
+
     const handleConnectionClick = async (id: number) => {
       const connection = connections.find(conn => conn.id === id)
       if (connection) {
         const newStatus = connection.status === 'normal' ? 'warning' : 
                          connection.status === 'warning' ? 'error' : 'normal'
-        await updateConnectionStatus(id, newStatus)  // 確保等待更新完成
+        await updateConnectionStatus(id, newStatus)
       }
     }
 
     return (
       <>
         {connections.map((connection) => {
-          const fromItem = turbines.find((t) => t.id === connection.from) || substations.find((s) => s.id === connection.from)
-          const toItem = turbines.find((t) => t.id === connection.to) || substations.find((s) => s.id === connection.to)
+          const fromItem = turbines.find((t) => t.id === connection.from) || 
+                          substations.find((s) => s.id === connection.from)
+          const toItem = turbines.find((t) => t.id === connection.to) || 
+                        substations.find((s) => s.id === connection.to)
+          
           if (fromItem && toItem) {
             return (
               <Polyline
@@ -555,8 +569,10 @@ function WindFarmMap() {
                          connection.status === 'warning' ? '#3b82f6' : '#ef4444',
                   weight: 3,
                   opacity: 0.8,
+                  // 只有正常狀態的連接線才有動畫效果
                   dashArray: connection.status === 'normal' ? '10, 10' : undefined,
-                  dashOffset: connection.status === 'normal' ? String(Date.now() / 100 % 20) : undefined,
+                  dashOffset: connection.status === 'normal' ? 
+                            String(-time % 20) : undefined,  // 使用負值使動畫向右移動
                 }}
                 eventHandlers={{
                   click: () => handleConnectionClick(connection.id),

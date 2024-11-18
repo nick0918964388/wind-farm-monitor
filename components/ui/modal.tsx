@@ -12,15 +12,27 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
 
   return (
     <div className="fixed inset-0 z-[1001] overflow-y-auto">
+      <div 
+        className="fixed inset-0 bg-black/30 backdrop-blur-sm 
+          animate-in fade-in duration-200"
+        onClick={onClose} 
+      />
+      
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/30" onClick={onClose} />
-        <div className="relative bg-white rounded-lg shadow-xl w-[85vw] mx-auto">
+        <div 
+          className="relative bg-white rounded-lg shadow-xl w-[85vw] mx-auto
+            animate-in fade-in zoom-in-95 slide-in-from-bottom-2 
+            duration-200 ease-out"
+        >
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 text-gray-400 hover:text-gray-500"
+            className="absolute right-4 top-4 p-2 rounded-full 
+              text-gray-400 hover:text-gray-500 
+              hover:bg-gray-100 transition-colors"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
+          
           {children}
         </div>
       </div>
