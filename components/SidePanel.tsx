@@ -154,14 +154,14 @@ const SidePanel = ({
 
   // 檢查是否接近警戒值
   const checkWarningLimits = (power: number, upperLimit: number, lowerLimit: number) => {
-    const threshold = 0.1; // 設定閾值為 10%
+    const threshold = 0.1; // Set threshold to 10%
     const upperDiff = (upperLimit - power) / upperLimit;
     const lowerDiff = (power - lowerLimit) / lowerLimit;
     
     if (upperDiff < threshold) {
-      return '接近上限，請進行檢查';
+      return 'Near upper limit, please check';
     } else if (lowerDiff < threshold) {
-      return '接近下限，請進行檢查';
+      return 'Near lower limit, please check';
     }
     return null;
   };
@@ -169,7 +169,7 @@ const SidePanel = ({
   const renderPowerChart = (turbine: WindTurbine) => {
     if (isLoadingHistory) {
       return <div className="h-[200px] flex items-center justify-center">
-        <span>載入中...</span>
+        <span>Loading...</span>
       </div>;
     }
 
@@ -182,7 +182,7 @@ const SidePanel = ({
     return (
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <h3 className="font-medium text-gray-700">近一週發電趨勢</h3>
+          <h3 className="font-medium text-gray-700">Power Generation Trend (Last 7 Days)</h3>
           {warningMessage && (
             <div className="text-red-500 text-sm font-medium flex items-center">
               <AlertTriangle className="w-4 h-4 mr-1" />
@@ -222,7 +222,7 @@ const SidePanel = ({
                 stroke="#991B1B"
                 strokeWidth={1}
                 dot={false}
-                name="警戒上限"
+                name="Warning Upper Limit"
               />
               {/* 警戒下限線 */}
               <Line 
@@ -231,7 +231,7 @@ const SidePanel = ({
                 stroke="#991B1B"
                 strokeWidth={1}
                 dot={false}
-                name="警戒下限"
+                name="Warning Lower Limit"
               />
               {/* 預計發電量線 */}
               <Line 
@@ -241,7 +241,7 @@ const SidePanel = ({
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
-                name="預計發電量"
+                name="Expected Power"
               />
               {/* 實際發電量線 */}
               <Line 
@@ -250,7 +250,7 @@ const SidePanel = ({
                 stroke="#3B82F6"
                 strokeWidth={2}
                 dot={false}
-                name="實際發電量"
+                name="Actual Power"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -258,15 +258,15 @@ const SidePanel = ({
         <div className="flex justify-end space-x-4 text-sm">
           <div className="flex items-center">
             <span className="w-3 h-0.5 bg-blue-500 mr-1"></span>
-            <span>實際發電量</span>
+            <span>Actual Power</span>
           </div>
           <div className="flex items-center">
             <span className="w-3 h-0.5 bg-green-500 mr-1 border-dashed border-t-2"></span>
-            <span>預計發電量</span>
+            <span>Expected Power</span>
           </div>
           <div className="flex items-center">
             <span className="w-3 h-0.5 bg-red-900 mr-1"></span>
-            <span>警戒範圍</span>
+            <span>Warning Range</span>
           </div>
         </div>
       </div>
@@ -328,12 +328,12 @@ const SidePanel = ({
                     selectedItem!.status === 'warning' ? 'bg-blue-500' : 'bg-red-500'
                   }`}></span>
                   <span className="font-medium">
-                    {selectedItem!.status === 'normal' ? '運轉正常' :
-                     selectedItem!.status === 'warning' ? '需要維護' : '故障停機'}
+                    {selectedItem!.status === 'normal' ? 'Operating Normal' :
+                     selectedItem!.status === 'warning' ? 'Maintenance Required' : 'Fault Shutdown'}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  上次更新: {new Date().toLocaleString()}
+                  Last Updated: {new Date().toLocaleString()}
                 </div>
               </div>
 
@@ -342,7 +342,7 @@ const SidePanel = ({
                 <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Zap className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-gray-600">發電量</span>
+                    <span className="text-sm text-gray-600">Power Output</span>
                   </div>
                   <div className="text-2xl font-bold text-green-600">
                     {selectedItem!.power.toFixed(2)}
@@ -352,7 +352,7 @@ const SidePanel = ({
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Wind className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm text-gray-600">風速</span>
+                    <span className="text-sm text-gray-600">Wind Speed</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-600">
                     {selectedItem!.windSpeed.toFixed(1)}
@@ -362,7 +362,7 @@ const SidePanel = ({
                 <div className="bg-red-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Thermometer className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-gray-600">溫度</span>
+                    <span className="text-sm text-gray-600">Temperature</span>
                   </div>
                   <div className="text-2xl font-bold text-red-600">
                     {selectedItem!.temperature.toFixed(1)}
@@ -372,7 +372,7 @@ const SidePanel = ({
                 <div className="bg-cyan-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Droplets className="h-4 w-4 text-cyan-500" />
-                    <span className="text-sm text-gray-600">濕度</span>
+                    <span className="text-sm text-gray-600">Humidity</span>
                   </div>
                   <div className="text-2xl font-bold text-cyan-600">
                     {selectedItem!.humidity.toFixed(1)}
@@ -386,7 +386,7 @@ const SidePanel = ({
 
               {/* 狀態控制 */}
               <div className="space-y-2">
-                <h3 className="font-medium text-gray-700">狀態控制</h3>
+                <h3 className="font-medium text-gray-700">Status Control</h3>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -395,7 +395,7 @@ const SidePanel = ({
                     onClick={() => updateTurbineStatus(selectedItem!.id, 'normal')}
                   >
                     <span className="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                    正常
+                    Normal
                   </Button>
                   <Button
                     size="sm"
@@ -404,7 +404,7 @@ const SidePanel = ({
                     onClick={() => updateTurbineStatus(selectedItem!.id, 'warning')}
                   >
                     <span className="w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-                    待修
+                    Warning
                   </Button>
                   <Button
                     size="sm"
@@ -413,20 +413,20 @@ const SidePanel = ({
                     onClick={() => updateTurbineStatus(selectedItem!.id, 'error')}
                   >
                     <span className="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-                    異常
+                    Error
                   </Button>
                 </div>
               </div>
 
               {/* 事件歷史 */}
               <div className="space-y-2">
-                <h3 className="font-medium text-gray-700">事件歷史</h3>
+                <h3 className="font-medium text-gray-700">Event History</h3>
                 <div className="bg-white rounded-lg border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-1/3">時間</TableHead>
-                        <TableHead>事件</TableHead>
+                        <TableHead className="w-1/3">Time</TableHead>
+                        <TableHead>Event</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -448,7 +448,7 @@ const SidePanel = ({
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Battery className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm text-gray-600">容量</span>
+                    <span className="text-sm text-gray-600">Capacity</span>
                   </div>
                   <div className="text-2xl font-bold text-yellow-600">
                     {selectedItem!.capacity.toFixed(2)}
@@ -458,7 +458,7 @@ const SidePanel = ({
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-1">
                     <Zap className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm text-gray-600">負載</span>
+                    <span className="text-sm text-gray-600">Load</span>
                   </div>
                   <div className="text-2xl font-bold text-purple-600">
                     {selectedItem!.load.toFixed(2)}
@@ -483,10 +483,10 @@ const SidePanel = ({
             }}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            刪除
+            Delete
           </Button>
           <Button variant="outline" onClick={() => setSelectedItem(null)}>
-            關閉
+            Close
           </Button>
         </div>
       </div>

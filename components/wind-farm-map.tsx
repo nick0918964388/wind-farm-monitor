@@ -87,7 +87,7 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
       setSelectedItem(null)
       if (isAddingTurbine) {
         const turbineId = `HL30-NEW${Date.now()}`
-        const turbineName = `風機 #${turbineId.slice(-4)}` // 使用 ID 的最後 4 位數作為名稱
+        const turbineName = `Turbine #${turbineId.slice(-4)}` // 使用 ID 的最後 4 位數作為名稱
 
         const newTurbine: WindTurbine = {
           id: turbineId,
@@ -98,7 +98,7 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
           temperature: 15 + Math.random() * 10,
           humidity: 60 + Math.random() * 20,
           status: 'normal',
-          events: [{ date: new Date().toLocaleString(), event: '安裝完成' }],
+          events: [{ date: new Date().toLocaleString(), event: 'Installation Complete' }],
         }
         
         try {
@@ -159,7 +159,7 @@ function MapEvents({ setSelectedItem, isAddingTurbine, isAddingSubstation, setTu
         }
       } else if (isAddingSubstation) {
         const substationId = `HL30-SUB${Date.now()}`
-        const substationName = `變電站 #${substationId.slice(-4)}`
+        const substationName = `Substation #${substationId.slice(-4)}`
         
         const newSubstation: Substation = {
           id: substationId,
@@ -385,7 +385,7 @@ function WindFarmMap() {
         .from('turbine_events')
         .insert({
           turbine_id: id,
-          event: `狀態更改為${newStatus}`,
+          event: `Status changed to ${newStatus}`,
           created_at: new Date().toISOString()
         })
 
@@ -401,7 +401,7 @@ function WindFarmMap() {
               ...t,
               status: newStatus,
               events: [
-                { date: new Date().toLocaleString(), event: `狀態更改為${newStatus}` },
+                { date: new Date().toLocaleString(), event: `Status changed to ${newStatus}` },
                 ...t.events
               ]
             }
@@ -661,7 +661,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Wind className="w-6 h-6 text-blue-500 mb-2" />
-                  <p className="text-sm text-gray-500">總風機數量</p>
+                  <p className="text-sm text-gray-500">Total Turbines</p>
                   <p className="text-lg font-bold">{turbines.length}</p>
                 </div>
               </CardContent>
@@ -673,7 +673,7 @@ function WindFarmMap() {
                   <div className="w-6 h-6 rounded-full bg-green-500 mb-2 flex items-center justify-center text-white">
                     <Wind className="w-4 h-4" />
                   </div>
-                  <p className="text-sm text-gray-500">正常運轉</p>
+                  <p className="text-sm text-gray-500">Normal Operation</p>
                   <p className="text-lg font-bold text-green-600">{getTurbineStatusCounts().normal}</p>
                 </div>
               </CardContent>
@@ -685,7 +685,7 @@ function WindFarmMap() {
                   <div className="w-6 h-6 rounded-full bg-blue-500 mb-2 flex items-center justify-center text-white">
                     <Wind className="w-4 h-4" />
                   </div>
-                  <p className="text-sm text-gray-500">待修風機</p>
+                  <p className="text-sm text-gray-500">Maintenance Required</p>
                   <p className="text-lg font-bold text-blue-600">{getTurbineStatusCounts().warning}</p>
                 </div>
               </CardContent>
@@ -697,7 +697,7 @@ function WindFarmMap() {
                   <div className="w-6 h-6 rounded-full bg-red-500 mb-2 flex items-center justify-center text-white">
                     <Wind className="w-4 h-4" />
                   </div>
-                  <p className="text-sm text-gray-500">故障停機</p>
+                  <p className="text-sm text-gray-500">Fault Shutdown</p>
                   <p className="text-lg font-bold text-red-600">{getTurbineStatusCounts().error}</p>
                 </div>
               </CardContent>
@@ -707,7 +707,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Zap className="w-6 h-6 text-green-500 mb-2" />
-                  <p className="text-sm text-gray-500">總發電量</p>
+                  <p className="text-sm text-gray-500">Total Power Output</p>
                   <p className="text-lg font-bold">{totalPower.toFixed(1)}<span className="text-sm">MW</span></p>
                 </div>
               </CardContent>
@@ -717,7 +717,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Wind className="w-6 h-6 text-cyan-500 mb-2" />
-                  <p className="text-sm text-gray-500">平均風速</p>
+                  <p className="text-sm text-gray-500">Average Wind Speed</p>
                   <p className="text-lg font-bold">{averageWindSpeed.toFixed(1)}<span className="text-sm">m/s</span></p>
                 </div>
               </CardContent>
@@ -727,7 +727,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Thermometer className="w-6 h-6 text-red-500 mb-2" />
-                  <p className="text-sm text-gray-500">平均溫度</p>
+                  <p className="text-sm text-gray-500">Average Temperature</p>
                   <p className="text-lg font-bold">{averageTemperature.toFixed(1)}<span className="text-sm">°C</span></p>
                 </div>
               </CardContent>
@@ -737,7 +737,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Droplets className="w-6 h-6 text-blue-500 mb-2" />
-                  <p className="text-sm text-gray-500">平均濕度</p>
+                  <p className="text-sm text-gray-500">Average Humidity</p>
                   <p className="text-lg font-bold">{averageHumidity.toFixed(1)}<span className="text-sm">%</span></p>
                 </div>
               </CardContent>
@@ -747,7 +747,7 @@ function WindFarmMap() {
               <CardContent className="p-4">
                 <div className="flex flex-col items-center">
                   <Battery className="w-6 h-6 text-yellow-500 mb-2" />
-                  <p className="text-sm text-gray-500">變電站數量</p>
+                  <p className="text-sm text-gray-500">Total Substations</p>
                   <p className="text-lg font-bold">{substations.length}</p>
                 </div>
               </CardContent>
@@ -809,7 +809,7 @@ function WindFarmMap() {
                         ? 'bg-green-500 hover:bg-green-600 text-white' 
                         : 'bg-white hover:bg-gray-100 text-green-500'
                     }`}
-                    title={isAddingTurbine ? '取消新增' : '新增風機'}
+                    title={isAddingTurbine ? 'Cancel Add' : 'Add Turbine'}
                   >
                     <Wind className="w-5 h-5" />
                   </button>
@@ -825,7 +825,7 @@ function WindFarmMap() {
                         ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
                         : 'bg-white hover:bg-gray-100 text-yellow-500'
                     }`}
-                    title={isAddingSubstation ? '取消新增' : '新增變電站'}
+                    title={isAddingSubstation ? 'Cancel Add' : 'Add Substation'}
                   >
                     <Battery className="w-5 h-5" />
                   </button>
@@ -840,7 +840,7 @@ function WindFarmMap() {
                         ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                         : 'bg-white hover:bg-gray-100 text-blue-500'
                     }`}
-                    title={isConnecting ? '取消連接' : '新增連接線'}
+                    title={isConnecting ? 'Cancel Connection' : 'Add Connection'}
                   >
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
@@ -865,7 +865,7 @@ function WindFarmMap() {
                       setConnections([]);
                     }}
                     className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 shadow-lg flex items-center justify-center transition-all duration-300 text-red-500"
-                    title="重置所有"
+                    title="Reset All"
                   >
                     <AlertTriangle className="w-5 h-5" />
                   </button>
