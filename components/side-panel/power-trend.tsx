@@ -14,7 +14,7 @@ export const PowerTrend = ({
   onTimeRangeChange,
   isLoading 
 }: PowerTrendProps) => {
-  console.log('Power history data:', powerHistory);
+//   console.log('Power history data:', powerHistory);
 
   if (isLoading) {
     return <div className="h-[200px] flex items-center justify-center">

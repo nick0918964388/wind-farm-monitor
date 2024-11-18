@@ -570,49 +570,78 @@ function WindFarmMap() {
     )
   }
 
-  // 新增刪除風機的函數
-  const deleteTurbine = async (id: string) => {
+  // 修改刪除風機的函數
+  async function deleteTurbine(id: string) {
     setIsLoading(true);
     try {
-      // 先刪除相關的連接線
-      const relatedConnections = connections.filter(
-        conn => conn.from === id || conn.to === id
-      );
+      // 按照正確的順序刪除相關數據
       
-      for (const conn of relatedConnections) {
-        await supabase
-          .from('connections')
-          .delete()
-          .eq('id', conn.id);
+      // 1. 先刪除連接線
+      const { error: connError } = await supabase
+        .from('connections')
+        .delete()
+        .or(`from_id.eq.${id},to_id.eq.${id}`);
+
+      if (connError) {
+        console.error('Error deleting connections:', connError);
+        return;
       }
 
-      // 刪除歷史數據
-      await supabase
+      // 2. 刪除健康狀況歷史記錄
+      const { error: healthError } = await supabase
+        .from('health_history')
+        .delete()
+        .eq('turbine_id', id);
+
+      if (healthError) {
+        console.error('Error deleting health history:', healthError);
+        return;
+      }
+
+      // 3. 刪除發電歷史記錄
+      const { error: powerError } = await supabase
         .from('power_history')
         .delete()
         .eq('turbine_id', id);
 
-      // 刪除風機
-      const { error } = await supabase
+      if (powerError) {
+        console.error('Error deleting power history:', powerError);
+        return;
+      }
+
+      // 4. 刪除事件記錄
+      const { error: eventError } = await supabase
+        .from('turbine_events')
+        .delete()
+        .eq('turbine_id', id);
+
+      if (eventError) {
+        console.error('Error deleting events:', eventError);
+        return;
+      }
+
+      // 5. 最後刪除風機本身
+      const { error: turbineError } = await supabase
         .from('wind_turbines')
         .delete()
         .eq('id', id);
 
-      if (error) {
-        console.error('Error deleting turbine:', error);
+      if (turbineError) {
+        console.error('Error deleting turbine:', turbineError);
         return;
       }
 
-      // 更新本地狀態
+      // 6. 更新本地狀態
       setTurbines(prev => prev.filter(t => t.id !== id));
       setConnections(prev => prev.filter(c => c.from !== id && c.to !== id));
       setSelectedItem(null);
+
     } catch (error) {
       console.error('Error in deleting turbine:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   // 新增刪除變電站的函數
   const deleteSubstation = async (id: string) => {

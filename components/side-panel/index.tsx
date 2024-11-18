@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Wind, Battery, Pencil } from 'lucide-react'
+import { Wind, Battery, Pencil, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from "@/components/ui/button"
 import { supabase } from '@/lib/supabase'
@@ -11,6 +11,17 @@ import { EventHistory, EventHistoryHeader } from './event-history'
 import { StatusControl } from './status-control'
 import { SectionTitle } from './section-title'
 import { HealthTrend } from './health-trend'
+import { 
+  AlertDialog, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger,
+  AlertDialogCancel,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog'
 
 type TimeRange = 'week' | 'month' | 'year';
 
@@ -386,18 +397,49 @@ export const SidePanel = ({
 
         {/* Footer */}
         <div className="border-t px-4 py-4 flex justify-end space-x-2">
-          <Button 
-            variant="destructive"
-            onClick={() => {
-              if ('windSpeed' in selectedItem) {
-                deleteTurbine(selectedItem.id);
-              } else {
-                deleteSubstation(selectedItem.id);
-              }
-            }}
-          >
-            Delete
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {`確定要刪除${
+                    'windSpeed' in selectedItem! ? '風機' : '變電站'
+                  } "${selectedItem!.name}" 嗎？此操作無法復原。`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel asChild>
+                  <Button variant="outline">取消</Button>
+                </AlertDialogCancel>
+                <AlertDialogAction asChild>
+                  <Button 
+                    variant="destructive"
+                    onClick={async () => {
+                      try {
+                        if ('windSpeed' in selectedItem!) {
+                          await deleteTurbine(selectedItem!.id);
+                          setSelectedItem(null);
+                        } else {
+                          await deleteSubstation(selectedItem!.id);
+                          setSelectedItem(null);
+                        }
+                      } catch (error) {
+                        console.error('Error deleting item:', error);
+                      }
+                    }}
+                  >
+                    確認刪除
+                  </Button>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </Modal>
