@@ -32,10 +32,10 @@ export const SidePanel = ({
   const [sections, setSections] = useState({
     smartMonitoring: true,
     metrics: true,
-    powerTrend: false,
+    powerTrend: true,
     eventHistory: true,
     statusControl: false,
-    healthTrend: false
+    healthTrend: true
   });
   const [healthHistory, setHealthHistory] = useState<HealthData[]>([]);
   const [isLoadingHealthHistory, setIsLoadingHealthHistory] = useState(false);
@@ -352,7 +352,11 @@ export const SidePanel = ({
             </div>
           ) : (
             <div className="space-y-6">
-              <SectionTitle title="Substation Info" section="metrics">
+              <SectionTitle 
+                title="Substation Info" 
+                isOpen={true}
+                onToggle={() => {}}
+              >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-yellow-50 p-4 rounded-lg">
                     <div className="flex items-center space-x-2 mb-1">
